@@ -157,10 +157,16 @@ for k=1:K
 end
 
 % --------------------- (3) Plug-in helper functions ----------------------
+% Exact inversion used in MSSAT Eq. (11)-(12):
+%   z = s^2/(n*sigma^2),
+%   d_hat^2 = n*sigma^2/2 * [z-1-y+sqrt((z-1-y)^2-4y)],
+%   lambda_hat = d_hat/(sqrt(n)*sigma).
+% max(...,0) below is only a finite-sample numerical guard.
 inv_bgn = @(s2, sigma2, y) ...
-    (sigma2/2) .* ( (s2./sigma2) - 1 - y + sqrt(max(((s2./sigma2) - 1 - y).^2 - 4*y, 0)) );
+    (n*sigma2/2) .* ( (s2./(n*sigma2)) - 1 - y + ...
+    sqrt(max(((s2./(n*sigma2)) - 1 - y).^2 - 4*y, 0)) );
 ell_hat = @(s, sigma2, y) ...
-    max( sqrt(inv_bgn(s.^2, sigma2, y)) ./ (sqrt(n)*sqrt(sigma2)), 0);
+    max( sqrt(max(inv_bgn(s.^2, sigma2, y), 0)) ./ (sqrt(n)*sqrt(sigma2)), 0);
 a_y     = @(ell, y) ((ell.^4 - y) ./ (ell.^2 .* (ell.^2 + 1)));
 theta_y = @(ell, y) ((ell.^4 + 2*y.*ell.^2 + y) ./ (ell.^3 .* (ell.^2 + 1).^2));
 psi_y   = @(ell, y) ((ell.^6 - 3*y.*ell.^2 - 2*y) ./ (ell.^3 .* (ell.^2 + 1).^2));
@@ -169,7 +175,7 @@ V_E_y   = @(ell, y) ( 2./(ell.^4 - y) ) .* ( ...
       - (y.*(y-1).*(5*y+1))./(ell.*(ell.^2+1).^2).*theta_y(ell,y) ...
       + ((ell.^4 + y).*(ell.^2 + y).^2) ./ (ell.^3.*(ell.^2+1).^2) .* psi_y(ell,y) ...
       + 2*y.^2.*(y-1).^2 ./ (ell.^2.*(ell.^2+1).^4) );
-V_y     = @(ell, y) 4*theta_y(ell,y).^2 + V_E_y(ell,y);
+V_y     = @(ell, y) (4*theta_y(ell,y).^2 + V_E_y(ell,y)) ./ (4*a_y(ell,y));
 
 % ------------------ (4) One-pass scan over s = 1..smax -------------------
 M = cell2mat(VA_list);
