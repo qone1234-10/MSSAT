@@ -159,15 +159,19 @@ mssat <- function(X_list,
     }
   }
 
+  ## Exact inversion used in MSSAT Eq. (11)-(12):
+  ## z = s^2 / (n * sigma^2), d_hat^2 = n*sigma^2/2 * [z-1-y+sqrt((z-1-y)^2-4y)],
+  ## and lambda_hat = d_hat / (sqrt(n) * sigma).  pmax() only guards finite-sample
+  ## roundoff / sub-edge values; it is not an additional approximation.
   inv_bgn <- function(s2, sigma2, y) {
     if (!is.finite(sigma2) || sigma2 <= 0) return(rep(0, length(s2)))
-    z <- s2 / sigma2
+    z <- s2 / (n * sigma2)
     disc <- pmax((z - 1 - y)^2 - 4 * y, 0)
-    (sigma2 / 2) * (z - 1 - y + sqrt(disc))
+    (n * sigma2 / 2) * (z - 1 - y + sqrt(disc))
   }
   ell_hat <- function(s, sigma2, y) {
     if (!is.finite(sigma2) || sigma2 <= 0) return(rep(0, length(s)))
-    pmax(sqrt(inv_bgn(s^2, sigma2, y)) / (sqrt(n) * sqrt(sigma2)), 0)
+    pmax(sqrt(pmax(inv_bgn(s^2, sigma2, y), 0)) / (sqrt(n) * sqrt(sigma2)), 0)
   }
   a_y <- function(ell, y) {
     (ell^4 - y) / (ell^2 * (ell^2 + 1))
@@ -187,7 +191,7 @@ mssat <- function(X_list,
     )
   }
   V_y <- function(ell, y) {
-    4 * theta_y(ell, y)^2 + V_E_y(ell, y)
+    (4 * theta_y(ell, y)^2 + V_E_y(ell, y)) / (4 * a_y(ell, y))
   }
 
   M <- do.call(cbind, VA_list)
